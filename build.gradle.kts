@@ -23,6 +23,7 @@ dependencies {
     implementation("org.apache.httpcomponents:httpclient:4.5.1")
     implementation("org.jsoup:jsoup:1.11.3")
     implementation("org.apache.poi:poi:4.0.1")
+    implementation("org.tmatesoft.svnkit:svnkit:1.9.3")
 
     // Use JUnit test framework
     testImplementation("junit:junit:4.12")
