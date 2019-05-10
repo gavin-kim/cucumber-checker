@@ -29,7 +29,6 @@ fun Application.mainModule() {
     }
     install(Routing) {
         static()
-        root()
         api()
     }
 }
@@ -39,11 +38,6 @@ fun Routing.static() {
         resource("/", "public/index.html")
         resource("*", "public/index.html")
     }
-}
-
-fun Routing.root() {
-
-
 }
 
 fun Routing.api() {
