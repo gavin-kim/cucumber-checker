@@ -1,4 +1,4 @@
-
+package service
 import model.*
 import org.apache.http.HttpStatus
 import org.jsoup.Jsoup
@@ -124,24 +124,3 @@ class CucumberReportLoader {
     }
 }
 
-/*
-fun app.main(args: Array<String>) {
-
-    val cucumberReportLoader = CucumberReportLoader()
-
-    val startTime = Date()
-    val failedScenarios = cucumberReportLoader.getFailedScenariosByFeature(Job.MANUAL_ORACLE_JOB, 15168)
-    val endTime = Date()
-
-    println("started at $startTime")
-    println("ended at $endTime")
-    // val failedBuilds = cucumberChecker.getFailedAutoTriggeredBuilds(Job.FULL_QA_REGRESSION_SQL_SERVER)
-
-
-*/
-/*    failedScenarios.forEach {
-        println(it.feature)
-        println(it.failedReason)
-    }*//*
-
-}*/

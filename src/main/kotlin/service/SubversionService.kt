@@ -1,15 +1,9 @@
+package service
+
 import org.tmatesoft.svn.core.SVNURL
-import org.tmatesoft.svn.core.auth.SVNSSLAuthentication
 import org.tmatesoft.svn.core.internal.io.dav.DAVRepositoryFactory
-import org.tmatesoft.svn.core.internal.wc.DefaultSVNSSLTrustManager
-import org.tmatesoft.svn.core.internal.wc.ISVNConnectionOptions
-import org.tmatesoft.svn.core.internal.wc17.SVNWCUtils
-import org.tmatesoft.svn.core.io.ISVNSession
 import org.tmatesoft.svn.core.io.SVNRepositoryFactory
-import org.tmatesoft.svn.core.wc.ISVNOptions
-import org.tmatesoft.svn.core.wc.SVNClientManager
 import org.tmatesoft.svn.core.wc.SVNWCUtil
-import java.io.File
 
 class SubversionService {
 
