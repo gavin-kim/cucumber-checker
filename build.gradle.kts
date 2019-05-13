@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = "com.gavin"
@@ -17,8 +16,6 @@ plugins {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation(kotlin("reflect"))
-    implementation(kotlin("stdlib-js"))
 
     implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("io.ktor:ktor-jackson:$ktor_version")
@@ -46,13 +43,5 @@ application {
 tasks.withType<KotlinCompile>().all {
     kotlinOptions {
         jvmTarget = "1.8"
-    }
-}
-
-tasks.withType<Kotlin2JsCompile> {
-    kotlinOptions {
-        outputFile = "/public/output.js"
-        moduleKind = "amd"
-        sourceMap = true
     }
 }

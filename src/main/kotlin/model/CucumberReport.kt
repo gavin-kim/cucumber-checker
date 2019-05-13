@@ -30,6 +30,12 @@ data class Feature(
     val tags: Set<String>
 )
 
+data class CucumberReport(
+    val job: Job,
+    val buildId: Int,
+    val failures: Map<Feature, List<Scenario>>
+)
+
 enum class Job(val id: Int, val jobName: String) {
     MANUAL_ORACLE_JOB(1, "ExecuteCucumberRun-Oracle-Parallel"),
     MANUAL_SQL_SERVER_JOB(2, "ExecuteCucumberRun--SQLServer-Sequential"),

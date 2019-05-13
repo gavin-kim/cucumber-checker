@@ -7,16 +7,17 @@ import io.ktor.application.install
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.features.DefaultHeaders
-import io.ktor.http.content.resource
-import io.ktor.http.content.static
+import io.ktor.http.content.*
 import io.ktor.jackson.jackson
 import io.ktor.response.respond
 import io.ktor.response.respondText
+import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.route
 import model.Job
-import service.CucumberReportLoader
+import service.CucumberReportService
+import java.io.File
 
 fun Application.mainModule() {
     install(DefaultHeaders)
@@ -33,26 +34,42 @@ fun Application.mainModule() {
     }
 }
 
-fun Routing.static() {
+fun Route.static() {
     static {
-        resource("/", "public/index.html")
-        resource("*", "public/index.html")
+        staticRootFolder = File("src/main/static")
+        static("css") {
+            files("css")
+        }
+        static("js") {
+            files("js")
+        }
+        default("index.html")
     }
 }
 
-fun Routing.api() {
+fun Route.resources() {
+
+}
+
+fun Route.api() {
     route("/api") {
-        get("/cucumberReport") {
+        get("/cucumberReport/job/{jobId}/build/{buildId}") {
             val jobId = call.parameters["jobId"]?.toIntOrNull()
             val buildId = call.parameters["buildId"]?.toIntOrNull()
 
             if (jobId == null || buildId == null) {
                 call.respondText("Invalid parameters")
-            } else {
-                val job = Job.values().find { it.id == jobId }!!
-                val report = CucumberReportLoader().getFailedScenariosByFeature(job, buildId)
-                call.respond(report)
+                return@get
             }
+
+            val job = Job.values().find { it.id == jobId }
+            if (job == null) {
+                call.respondText("Invalid Job ID: $jobId")
+                return@get
+            }
+
+            val report = CucumberReportService().getReport(job, buildId)
+            call.respond(report)
         }
     }
 }

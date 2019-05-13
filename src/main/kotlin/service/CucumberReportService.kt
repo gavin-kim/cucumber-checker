@@ -2,15 +2,16 @@ package service
 import model.*
 import org.apache.http.HttpStatus
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import java.util.*
 
 private const val CUCUMBER_HOST = "http://wfm-ci.infor.com:8080"
 private const val CUCUMBER_HTML_REPORTS = "cucumber-html-reports"
 private const val OVERVIEW_FEATURES = "overview-features.html"
 
-class CucumberReportLoader {
+class CucumberReportService {
 
-    fun getFailedScenariosByFeature(job: Job, buildId: Int): Map<Feature, List<Scenario>> {
+    fun getReport(job: Job, buildId: Int): CucumberReport {
         val buildUrl = "$CUCUMBER_HOST/job/${job.jobName}/$buildId"
 
         val failedScenarioNamesByFeatureName = getFailedScenarioNamesByFeatureName(buildUrl)
@@ -27,7 +28,7 @@ class CucumberReportLoader {
             }
         }
 
-        return failedScenariosByFeature
+        return CucumberReport(job, buildId, failedScenariosByFeature)
     }
 
     private fun getFailedScenarioNamesByFeatureName(buildUrl: String): Map<String, List<String>> {
@@ -56,7 +57,6 @@ class CucumberReportLoader {
         val doc = response.parse()
         return doc.body()
             .select("table[id='tablesorter'] > tbody > tr")
-            .filter { it.child(2).text().toInt() > 0 }
             .map { failedFeatureReport ->
                 val tagColumn = failedFeatureReport.child(0)
                 tagColumn.text() to tagColumn.select("a").attr("href")
@@ -73,21 +73,32 @@ class CucumberReportLoader {
         val failedScenarioNameSet = failedScenarioNames.toSet()
         val failedScenarios = mutableListOf<Scenario>()
 
-        doc.body().select("div.feature > div.elements > div.element").forEach { element ->
-            val keyword = element.selectFirst("span.keyword").text()
-            val isFailed = element.select("div.steps div.brief").hasClass("failed")
+        val elements = doc.body().select("div.feature > div.elements > div.element")
+
+        val hasBackground = elements
+            .select("span.collapsable-control > div.brief > span.keyword:contains('Background')").isNotEmpty()
+
+        elements.filter { element ->
+            element.select("span.collapsable-control > div.brief > span.keyword").text().startsWith("Scenario")
+        }.forEach { element ->
             val scenarioName = element.selectFirst("span.name").text()
 
-            if (keyword == "Scenario" && isFailed && failedScenarioNameSet.contains(scenarioName)) {
+            if (failedScenarioNameSet.contains(scenarioName)) {
                 val scenarioTags = element.select("div.tags > a").eachText()
-                val failedStep = element.select("div.step > div.brief.failed > span.name").text()
-                val failedReason = element.select("div.step > div.brief.failed").next().text()
+
+                var failedStepElement = element.select("div.step > div.brief.failed, div.hook > div.brief.failed")
+                if (failedStepElement == null && hasBackground) {
+                    failedStepElement = element.nextElementSibling().select("div.step > div.brief.failed")
+                }
+                //TODO: Scenario fail or Step failed or Hook failed( can be many)
+                val failedStep = failedStepElement.select("span.name").text()
+                val failedReason = failedStepElement.next("pre").text()
+
                 val scenario = Scenario(feature, scenarioTags.toSet(), scenarioName, failedStep, failedReason)
 
                 failedScenarios.add(scenario)
             }
         }
-
         return failedScenarios
     }
 
