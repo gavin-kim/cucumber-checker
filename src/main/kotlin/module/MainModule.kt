@@ -15,6 +15,7 @@ import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.route
+import model.Build
 import model.Job
 import service.CucumberReportService
 import java.io.File
@@ -70,6 +71,10 @@ fun Route.api() {
 
             val report = CucumberReportService().getReport(job, buildId)
             call.respond(report)
+        }
+
+        get("/jobOptions") {
+
         }
     }
 }
