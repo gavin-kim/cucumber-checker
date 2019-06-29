@@ -12,81 +12,43 @@ private const val OVERVIEW_FEATURES = "overview-features.html"
 private const val TEST_REPORT = "testReport"
 private const val SCENARIO = "Scenario"
 private const val BACKGROUND = "Background"
+private const val XML_BUILD_SEARCH_QUERY = "xml?tree=builds[building,id,displayName,result,duration,timestamp,actions[causes[userId,userName]]]"
 
 class CucumberReportService {
 
     val logger = KotlinLogging.logger {}
 
-    fun getBuildsUsingRssOnly(job: Job): List<Build> {
-        val rssUrl = "$CUCUMBER_HOST/job/${job.jobName}/rssAll"
-
-        val doc = Jsoup.connect(rssUrl).maxBodySize(0).get()
-
-        return doc.select("feed > entry").map {
-            val title = it.select("title").text()
-
-            val id = it.select("id").text().substringAfterLast(":").toInt()
-            val (name, statusMessage) = getNameStatusMessagePair(title.replace(job.jobName, ""))
-            val link = it.select("link").attr("href")
-
-            Build(link, id, name, getBuildStatus(statusMessage), 0 , 0)
-        }
-    }
-
-    private fun getNameStatusMessagePair(title: String): Pair<String, String> {
-
-        var countLeft = 0
-        var countRight = 0
-
-        for (i in title.length - 1 downTo 0) {
-            when (title[i]) {
-                '(' -> countLeft++
-                ')' -> countRight++
-            }
-
-            if (countRight > 0 && countLeft == countRight) {
-                return title.substring(0, i).trim() to title.substring(i)
-            }
-        }
-        return title.trim() to ""
-    }
-
-    private fun getBuildStatus(message: String): Build.Result {
-        return when {
-            message.contains("broken") -> Build.Result.FAILURE
-            message.contains("back to normal") or message.contains("stable") -> Build.Result.SUCCESS
-            message.contains("aborted") -> Build.Result.ABORTED
-            else -> Build.Result.UNSTABLE
-        }
-    }
-
-    fun getBuilds(job: Job): List<Build> {
-        val buildUrls = getBuildUrls(job)
-
-        return buildUrls.map { getBuild(it) }
-    }
-
-    private fun getBuildUrls(job: Job): List<String> {
-        val url = "$CUCUMBER_HOST/job/${job.jobName}/rssAll"
+    fun getBuilds(job: String): List<Build> {
+        val jobUrl = "$CUCUMBER_HOST/job/${job}"
+        val url = "$jobUrl/api/$XML_BUILD_SEARCH_QUERY"
 
         val xml = Jsoup.connect(url).maxBodySize(0).get()
 
-        return xml.select("feed > entry > link").eachAttr("href")
-    }
+        return xml.select("build").map { build ->
+            val id = build.select("id").text().toInt()
+            val name = build.select("displayName").text()
+            val result = getBuildResult(build.select("result").text())
+            val duration = build.select("duration").text().toLong()
+            val timestamp = build.select("timestamp").text().toLong()
+            val finished = build.select("building").text().equals("true", true).not()
+            val hasReport = build.select("action[_class='hudson.tasks.junit.TestResultAction']").isNotEmpty()
 
-    private fun getBuild(buildUrl: String): Build {
-        val url = "${buildUrl}api/xml?tree=id,displayName,result,duration,timestamp"
+            val (userId, userName) = build.select("action[_class='hudson.model.CauseAction'] > cause")
+                .let { it.select("userId").text() to it.select("userName").text() }
 
-        val xml = Jsoup.connect(url).maxBodySize(0).get()
-
-        return Build(
-            buildUrl,
-            xml.select("id").text().toInt(),
-            xml.select("displayName").text(),
-            getBuildResult(xml.select("result").text()),
-            xml.select("duration").text().toLong(),
-            xml.select("timestamp").text().toLong()
-        )
+            Build(
+                url = "$jobUrl/$id",
+                id = id,
+                name = name,
+                result = result,
+                duration = duration,
+                timestamp = timestamp,
+                finished = finished,
+                hasReport = hasReport,
+                userId = userId,
+                userName = userName
+            )
+        }
     }
 
     private fun getBuildResult(result: String): Build.Result {
@@ -104,29 +66,8 @@ class CucumberReportService {
         return response.statusCode() == HttpStatus.SC_OK
     }
 
-    fun investigateStatus(job: Job) {
-        val rssUrl = "$CUCUMBER_HOST/job/${job.jobName}/rssAll"
-
-        val doc = Jsoup.connect(rssUrl).maxBodySize(0).get()
-
-        val messageToStatus = doc.select("feed > entry").map {
-            val title = it.select("title").text()// status, title
-            val statusMessage = title.substringAfterLast("(").substringBefore(")")
-
-            val link = it.select("link").attr("href")
-            val buildDoc = Jsoup.connect(link).maxBodySize(0).get()
-            val status = buildDoc.body().select("h1.build-caption > img").attr("tooltip")
-
-            statusMessage to status
-        }
-
-        messageToStatus.forEach {
-            println(it)
-        }
-    }
-
-    fun getReport(job: Job, buildId: Int): Report {
-        val buildUrl = "$CUCUMBER_HOST/job/${job.jobName}/$buildId"
+    fun getReport(jobName: String, buildId: Int): Report {
+        val buildUrl = "$CUCUMBER_HOST/job/$jobName/$buildId"
 
         val failedScenarioNamesByFeatureName = getFailedScenarioNamesByFeatureName(buildUrl)
         val reportHtmlByFeature = getReportHtmlByFeature(buildUrl)
@@ -141,7 +82,7 @@ class CucumberReportService {
             }
         }
 
-        return Report(job, buildId, failedFeatures)
+        return Report(jobName, buildId, failedFeatures)
     }
 
     private fun getFailedScenarioNamesByFeatureName(buildUrl: String): Map<String, List<String>> {
@@ -241,7 +182,7 @@ class CucumberReportService {
             }
 
             val name = brief.select("span.name").text()
-            val duration = brief.select("span.duration").text()
+            val duration = brief.select("span.duration").text().toLong()
             val result = getResult(brief)
 
             Hook(type, name, duration, result)
@@ -260,7 +201,7 @@ class CucumberReportService {
                 else -> Step.Type.UNKNOWN
             }
             val name = brief.select("span.name").text()
-            val duration = brief.select("span.duration").text()
+            val duration = brief.select("span.duration").text().toLong()
             val result = getResult(brief)
 
             val arguments = getStepArguments(step)
@@ -286,6 +227,16 @@ class CucumberReportService {
 
     private fun getStepArguments(step: Element): List<List<String>> {
         return step.select("table.step-arguments > tbody > tr").map { tr -> tr.select("td").eachText() }
+    }
+
+    fun getCucumberJobs(view: View): List<String> {
+        val url = "$CUCUMBER_HOST/view/${view.viewName}/api/xml"
+
+        val xml = Jsoup.connect(url).maxBodySize(0).get()
+
+        return xml.select("job")
+            .map { it.select("name").text() }
+            .filter { it.contains("cucumber", true) }
     }
 }
 

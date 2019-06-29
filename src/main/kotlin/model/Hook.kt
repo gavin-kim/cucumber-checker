@@ -3,7 +3,7 @@ package model
 data class Hook(
     val type: Type,
     val name: String,
-    val duration: String,
+    val duration: Long,
     val result: Result,
     val message: String? = null
 ) {

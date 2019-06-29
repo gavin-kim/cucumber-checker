@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.tasks.Kotlin2JsCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val kotlinVersion = "1.3.40"
@@ -16,6 +17,7 @@ plugins {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8", kotlinVersion))
+    implementation(kotlin("stdlib-js", kotlinVersion))
 
     implementation("io.ktor", "ktor-server-netty", ktorVersion)
     implementation("io.ktor", "ktor-jackson", ktorVersion)
@@ -48,3 +50,4 @@ tasks.withType<KotlinCompile>().all {
         jvmTarget = "1.8"
     }
 }
+

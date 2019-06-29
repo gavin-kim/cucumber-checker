@@ -15,8 +15,7 @@ import io.ktor.routing.Route
 import io.ktor.routing.Routing
 import io.ktor.routing.get
 import io.ktor.routing.route
-import model.Build
-import model.Job
+import model.View
 import service.CucumberReportService
 import java.io.File
 
@@ -54,18 +53,12 @@ fun Route.resources() {
 
 fun Route.api() {
     route("/api") {
-        get("/cucumberReport/job/{jobId}/build/{buildId}") {
-            val jobId = call.parameters["jobId"]?.toIntOrNull()
+        get("/cucumberReport/job/{job}/buildId/{buildId}") {
+            val job = call.parameters["job"]
             val buildId = call.parameters["buildId"]?.toIntOrNull()
 
-            if (jobId == null || buildId == null) {
-                call.respondText("Invalid parameters")
-                return@get
-            }
-
-            val job = Job.values().find { it.id == jobId }
-            if (job == null) {
-                call.respondText("Invalid Job ID: $jobId")
+            if (job.isNullOrBlank() || buildId == null) {
+                call.respondText("Invalid parameters. job: $job, buildId: $buildId")
                 return@get
             }
 
@@ -73,8 +66,12 @@ fun Route.api() {
             call.respond(report)
         }
 
-        get("/jobOptions") {
+        get("/cucumberJobs") {
+            val jobsByView = View.values()
+                .map { view -> view.viewName to CucumberReportService().getCucumberJobs(view) }
+                .toMap()
 
+            call.respond(jobsByView)
         }
     }
 }
