@@ -3,6 +3,7 @@ HELP.md
 /build/
 !gradle/wrapper/gradle-wrapper.jar
 /app/node_modules/
+/app/dist/
 
 
 ### IntelliJ IDEA ###
